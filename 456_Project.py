@@ -26,14 +26,21 @@ def main():
     auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
     auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
     api = tweepy.API(auth)
-    seattleID = 2490383
+    
+    # Retrieve the WOEID (Where on Earth ID) for Seattle
+    seattleID = 0
+    for trend in api.trends_available():
+        if (trend['name'] == 'Seattle'):
+           seattleID = trend['woeid']
+
+    # Retrieve the current trends in Seattle
     trends = api.trends_place(seattleID)
     trendNames = [trend['name'] for trend in trends[0]['trends']]
     print(trendNames)
     
     client = Query(**oauth)
-    print("\nCurrent Trend: %s\n" % trendNames[44])
-    tweets = client.search_tweets(keywords=trendNames[44], limit=10)
+    print("\nCurrent Trend: %s\n" % trendNames[0])
+    tweets = client.search_tweets(keywords=trendNames[0], limit=1000)
     
 
     tweet_text = []
