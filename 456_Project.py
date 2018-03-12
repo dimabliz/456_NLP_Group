@@ -1,7 +1,18 @@
-import nltk
 from nltk.twitter import Query, Streamer, Twitter, TweetViewer, TweetWriter, credsfromfile
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import tweepy
+
+def getTopTrends(name, oauth):
+    auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
+    auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
+    api = tweepy.API(auth)
+    ID = 0
+    for trend in api.trends_available():
+        if (trend['name'] == name):
+            ID = trend['woeid']
+    trends = api.trends_place(ID)
+    trendNames = [trend['name'] for trend in trends[0]['trends']]
+    return trendNames
 
 def pre_process_words(tweet_words):
     for item in list(tweet_words):
@@ -21,26 +32,10 @@ def pre_process_words(tweet_words):
         if item.count == 0:
             tweet_words.remove(item)
 
-def get_final_tweet_sents(processed_tweet_sents, num_of_tweets):
-    oauth = credsfromfile()
-    auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
-    auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
-    api = tweepy.API(auth)
-
-    # Retrieve the WOEID (Where on Earth ID) for Seattle
-    seattleID = 0
-    for trend in api.trends_available():
-        if (trend['name'] == 'Seattle'):
-            seattleID = trend['woeid']
-
-    # Retrieve the current trends in Seattle
-    trends = api.trends_place(seattleID)
-    trendNames = [trend['name'] for trend in trends[0]['trends']]
-    print(trendNames)
-
+def get_final_tweet_sents(num_of_tweets, trend, oauth):
+    processed_tweet_sents = []
     client = Query(**oauth)
-    print("\nCurrent Trend: %s\n" % trendNames[0])
-    tweets = client.search_tweets(keywords=trendNames[0], limit=num_of_tweets)
+    tweets = client.search_tweets(keywords=trend, limit=num_of_tweets)
 
     tweet_text = []
 
@@ -58,18 +53,32 @@ def get_final_tweet_sents(processed_tweet_sents, num_of_tweets):
 
     for i in tweet_words:
         processed_tweet_sents.append(" ".join(i))
+        
+    return processed_tweet_sents
+
 
 
 def main():
-
-    #export TWITTER="/path/to/twitter-files"
-
-    processed_tweet_sents = []
-    get_final_tweet_sents(processed_tweet_sents, 10)
-
-    print("processed sents")
-    for i in processed_tweet_sents:
-        print(i)
+    oauth = credsfromfile()
+    # Retrieve the WOEID (Where on Earth ID) for Seattle
+    city = "Seattle"
+    
+    # Retrieve the top trends in Seattle
+    trends = getTopTrends(city, oauth)
+    trend = trends[0]
+    tweets = get_final_tweet_sents(10, trend, oauth)
+    analyser = SentimentIntensityAnalyzer()
+    
+    print("\nCurrent Trend: %s\n" % trend)
+    for tweet in tweets:
+         sentiment = analyser.polarity_scores(tweet)
+         print("{:-<40} {}".format(tweet, str(sentiment)))
+         if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
+             print("This tweet was positive!\n")
+         elif (sentiment['compound'] < 0 and sentiment['neg'] > 0):
+             print("This tweet was negative!\n")
+         elif (sentiment['neu'] == 1):
+             print("This tweet was neutral!\n")
 
 if __name__ == "__main__":
     main()
