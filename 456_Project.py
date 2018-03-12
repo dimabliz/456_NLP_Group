@@ -55,7 +55,20 @@ def get_final_tweet_sents(num_of_tweets, trend, client):
         
     return processed_tweet_sents
 
-     
+#gets user input 
+def get_user_input():
+    entry = raw_input("Enter 1 for trends of the US: \n" + "Enter 2 for trends of a state: \n"
+		      +"Enter 3 for trends of a city: \n")
+    if entry == '1':
+	print('<US>')
+    elif entry == '2':
+	print('<State>')
+	state = raw_input("Enter a state:\n")
+	print(state)
+    elif entry == '3':
+	print('<City>')
+	city = raw_input("Enter a city name:\n")
+	print(city)
 
 def main():
     oauth = credsfromfile()
