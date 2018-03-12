@@ -60,6 +60,39 @@ def get_final_tweet_sents(num_of_tweets, trend, oauth):
     return processed_tweet_sents
 
 
+def print_trend_analysis(trends, oauth, i, num_of_tweets):
+    trend = trends[i]
+    tweets = get_final_tweet_sents(num_of_tweets, trend, oauth)
+    analyser = SentimentIntensityAnalyzer()
+
+    positivity = 0
+    negativity = 0
+    neutrality = 0
+
+    # print("\nCurrent Trend: %s\n" % trend)
+    for tweet in tweets:
+        sentiment = analyser.polarity_scores(tweet)
+        # print("{:-<40} {}".format(tweet, str(sentiment)))
+        if sentiment['compound'] > 0 and sentiment['pos'] > 0:
+            # print("This tweet was positive!\n")
+            positivity += sentiment['pos']
+        elif sentiment['compound'] < 0 and sentiment['neg'] > 0:
+            # print("This tweet was negative!\n")
+            negativity += sentiment['neg']
+        elif sentiment['neu'] == 1:
+            # print("This tweet was neutral!\n")
+            neutrality += 1
+
+    print(str(i) + ".Topic: " + trends[i])
+    if positivity > negativity and positivity > neutrality:
+        print("The topic is positive")
+    elif negativity > positivity and negativity > neutrality:
+        print("The topic is negative")
+    else:
+        print("The topic is neutral")
+
+    print("positivity:" + str(positivity) + " negativity:" + str(negativity) + " neutrality:" + str(neutrality) + "\n")
+
 def main():
     oauth = credsfromfile()
     # Retrieve the WOEID (Where on Earth ID) for Seattle
@@ -67,37 +100,11 @@ def main():
 
     # Retrieve the top trends in Seattle
     trends = getTopTrends(city, oauth)
-    trend = trends[2]
-    tweets = get_final_tweet_sents(10, trend, oauth)
-    analyser = SentimentIntensityAnalyzer()
 
-    positivity = 0
-    negativity = 0
-    neutrality = 0
-
-    print("\nCurrent Trend: %s\n" % trend)
-    for tweet in tweets:
-        sentiment = analyser.polarity_scores(tweet)
-        print("{:-<40} {}".format(tweet, str(sentiment)))
-        if sentiment['compound'] > 0 and sentiment['pos'] > 0:
-            print("This tweet was positive!\n")
-            positivity += sentiment['pos']
-        elif sentiment['compound'] < 0 and sentiment['neg'] > 0:
-            print("This tweet was negative!\n")
-            negativity += sentiment['neg']
-        elif sentiment['neu'] == 1:
-            print("This tweet was neutral!\n")
-            neutrality += 1
-
-    print("positivity:" + str(positivity) + " negativity:" + str(negativity) + " neutrality:" + str(neutrality))
-
-    print("Topic: " + trends[1])
-    if positivity > negativity and positivity > negativity:
-        print("The topic is positive")
-    elif negativity > positivity and negativity > neutrality:
-        print("The topic is negative")
-    else:
-        print("The topic is neutral")
+    # Printing sentiments for top 10 topics in Seattle
+    for i in range(10):
+        if trends[i] is not None:
+            print_trend_analysis(trends, oauth, i, 10)
 
 if __name__ == "__main__":
     main()
