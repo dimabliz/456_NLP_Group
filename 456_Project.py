@@ -8,7 +8,7 @@ def getTopTrends(name, oauth, totalTrends):
     api = tweepy.API(auth)
     ID = 0
     for trend in api.trends_available():
-        if (trend['name'] == name):
+        if (trend['name'] == name and trend['countryCode'] == 'US'):
             ID = trend['woeid']
     trends = api.trends_place(ID)
     trendNames = [trend['name'] for trend in trends[0]['trends'][0:totalTrends]]
@@ -61,13 +61,14 @@ def main():
     oauth = credsfromfile()
     analyser = SentimentIntensityAnalyzer()
     # Retrieve the WOEID (Where on Earth ID) for Seattle
-    city = "Seattle"
+    #city = "Seattle"
     cities = ["Seattle"]
     
-    totalTrends = 5
+    totalTrends = 10
     numTweets = 100
     # Retrieve the top trends in Seattle
     for city in cities:
+        print("Current City:", city)
         trends = getTopTrends(city, oauth, totalTrends)
         for trend in trends:
             client = Query(**oauth)
