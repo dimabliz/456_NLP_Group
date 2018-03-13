@@ -32,6 +32,26 @@ def pre_process_words(tweet_words):
         if item.count == 0:
             tweet_words.remove(item)
 
+def get_final_tweet_sents_search(raw_tweets):
+    tweet_text = []
+    processed_tweet_sents = []
+
+    for tweet in raw_tweets:
+        if tweet['lang'] == "en":
+            tweet_text.append(tweet['text'])
+
+    # list of list of tweet words
+    tweet_words = []
+    for i in tweet_text:
+        tweet_words.append(i.split())
+
+    pre_process_words(tweet_words)
+
+    for i in tweet_words:
+        processed_tweet_sents.append(" ".join(i))
+
+    return processed_tweet_sents
+
 def get_final_tweet_sents(trend, client):
     processed_tweet_sents = []
     
@@ -76,6 +96,40 @@ def get_user_input(options):
     
     return selection
 
+def analyze_search_tweets(topic, final_tweets):
+    analyser = SentimentIntensityAnalyzer()
+
+    totals = {'Positive': 0, 'Negative': 0, 'Neutral': 0}
+    for tweet in final_tweets:
+        sentiment = analyser.polarity_scores(tweet)
+        #print("{:-<40} {}".format(tweet, str(sentiment)))
+        if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
+            totals['Positive'] += 1
+        elif (sentiment['compound'] < 0 and sentiment['neg'] > 0):
+            totals['Negative'] += 1
+        elif (sentiment['neu'] == 1):
+            totals['Neutral'] += 1
+
+    opinions = []
+    num = max(totals.values())
+
+    for sent in totals.keys():
+        if totals[sent] == num:
+            opinions.append(sent)
+
+    if len(opinions) == 1:
+        print("Opinion for the topic {}: {} with {} out of {} tweets.".format
+              (topic, opinions[0], num, MAXTWEETS))
+    else:
+        print("Opinions for the topic {}: split between ".format(trend), end="")
+        for i in range(len(opinions)):
+            print(opinions[i], end="")
+            if (i != len(opinions) - 1):
+                print(", ", end="")
+            else:
+                print(" ", end="")
+        print("with {} out of {} tweets".format(num, MAXTWEETS))
+
 def getOpinion(selection, oauth, api):
    
     analyser = SentimentIntensityAnalyzer()
@@ -83,7 +137,7 @@ def getOpinion(selection, oauth, api):
         trends = getTopTrends(name, api)
         for trend in trends:
             client = Query(**oauth)
-            print("\nCurrent Trend: %s\n" % trend)
+            print("\nCurrent Trend: %s" % trend)
             
             tweets = get_final_tweet_sents(trend, client)
             totals = {'Positive': 0, 'Negative': 0, 'Neutral': 0}
@@ -121,16 +175,28 @@ def getOpinion(selection, oauth, api):
 
 def main():
     oauth = credsfromfile()
-    auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
-    auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
-    api = tweepy.API(auth)
-    options = []
-    for trend in api.trends_available():
-        if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
-            options.append(trend['name'])
-    inp = get_user_input(options)
-    api = tweepy.API(auth)
-    getOpinion(inp, oauth, api)
+
+    entry = input("Enter 1 to search a topic: \n"
+                  + "Enter 2 to analyze trends: \n")
+    if entry == '1':
+        client = Query(**oauth)
+        keyword = input("Enter a keyword or hashtag to search: ")
+        tweets = client.search_tweets(keywords=keyword, limit=100)
+        final_tweets = get_final_tweet_sents_search(tweets)
+        analyze_search_tweets(keyword, final_tweets)
+
+    elif entry == '2':
+        auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
+        auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
+        api = tweepy.API(auth)
+
+        options = []
+        for trend in api.trends_available():
+            if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
+                options.append(trend['name'])
+        inp = get_user_input(options)
+        api = tweepy.API(auth)
+        getOpinion(inp, oauth, api)
     
 if __name__ == "__main__":
     main()
