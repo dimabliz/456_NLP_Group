@@ -83,7 +83,7 @@ def get_user_input(options):
                 selection = input("Enter a valid city name:\n")
             invalid = 0
         else:
-            print("Invalid Selection. Try again.")
+            print("Invalid selection. Try again.")
     notInt = 1
     while(notInt):
         totalTrends = input("Enter the number of trends you would like to have. Pick a number between 0 and 20:\n")
@@ -165,25 +165,31 @@ def getOpinionsOfTopic(topic, oauth):
 def main():
     oauth = credsfromfile()
 
-    entry = input("Enter 1 to search a topic: \n"
-                  + "Enter 2 to analyze trends: \n")
-    if entry == '1':
-        keyword = input("Enter a keyword or hashtag to search: ")
-        getOpinionsOfTopic(keyword, oauth)
-
-    elif entry == '2':
-        auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
-        auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
-        api = tweepy.API(auth)
-
-        options = []
-        for trend in api.trends_available():
-            if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
-                options.append(trend['name'])
-
-        totalTrends, location = get_user_input(options)
-        trends = getTopTrends(totalTrends, location, api)
-        for trend in trends:
-            getOpinionsOfTopic(trend, oauth)
+    invalid = 1
+    while(invalid):
+        entry = input("Enter 1 to search a topic: \n"
+                      + "Enter 2 to analyze trends: \n")
+        if entry == '1':
+            keyword = input("Enter a keyword or hashtag to search: ")
+            getOpinionsOfTopic(keyword, oauth)
+            invalid = 0
+    
+        elif entry == '2':
+            auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
+            auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
+            api = tweepy.API(auth)
+    
+            options = []
+            for trend in api.trends_available():
+                if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
+                    options.append(trend['name'])
+    
+            totalTrends, location = get_user_input(options)
+            trends = getTopTrends(totalTrends, location, api)
+            for trend in trends:
+                getOpinionsOfTopic(trend, oauth)
+            invalid = 0
+        else: 
+            print("Invalid Selection. Try again.")
     
 if __name__ == "__main__": main()
