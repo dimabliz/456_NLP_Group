@@ -1,17 +1,15 @@
-from nltk.twitter import Query, Streamer, Twitter, TweetViewer, TweetWriter, credsfromfile
+from nltk.twitter import Query, credsfromfile
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import tweepy
-
-MAXTRENDS = 5
 MAXTWEETS = 100
     
-def getTopTrends(name, api):
+def getTopTrends(totalTrends, name, api):
     ID = 0
     for trend in api.trends_available():
         if (trend['name'] == name):
             ID = trend['woeid']
     trends = api.trends_place(ID)
-    trendNames = [trend['name'] for trend in trends[0]['trends'][0:MAXTRENDS]]
+    trendNames = [trend['name'] for trend in trends[0]['trends'][0:totalTrends]]
     return trendNames
 
 def pre_process_words(tweet_words):
@@ -32,7 +30,7 @@ def pre_process_words(tweet_words):
         if item.count == 0:
             tweet_words.remove(item)
 
-def get_final_tweet_sents_search(raw_tweets):
+def preprocess_tweet(raw_tweets):
     tweet_text = []
     processed_tweet_sents = []
 
@@ -52,55 +50,50 @@ def get_final_tweet_sents_search(raw_tweets):
 
     return processed_tweet_sents
 
-def get_final_tweet_sents(trend, client):
-    processed_tweet_sents = []
-    
-    tweets = client.search_tweets(keywords=trend, limit=MAXTWEETS)
-
-    tweet_text = []
-
-    for tweet in tweets:
-        if tweet['lang'] == "en":
-            tweet_text.append(tweet['text'])
-
-    # list of list of tweet words
-    tweet_words = []
-    for i in tweet_text:
-        tweet_words.append(i.split())
-    
-    pre_process_words(tweet_words)
-
-    for i in tweet_words:
-        processed_tweet_sents.append(" ".join(i))
-        
-    return processed_tweet_sents
-
 #gets user input 
 def get_user_input(options):
-    entry = input("Enter 1 for trends of the US: \n" 
-                  + "Enter 2 for trends of Seattle: \n"
-                  + "Enter 3 for trends of a city in the US: \n")
-    selection = []
-    if entry == '1':
-         print('<US>')
-         selection = ["United States"]
-    elif entry == '2':
-        print('<Seattle>')
-        selection = ['Seattle']
-    elif entry == '3':
-        print('<City>')
-        city = input("Enter a city name from the following options: {}\n".format(options))
-        selection = [city]
-        while selection[0] not in options:
-            selection[0] = input("Enter a valid city name.\n")
-    
-    return selection
+    invalid = 1
+    while(invalid):
+        entry = input("Enter 1 for trends of the US: \n" 
+                      + "Enter 2 for trends of Seattle: \n"
+                      + "Enter 3 for trends of a city in the US: \n")
+        selection = []
+        if entry == '1':
+             print('<US>')
+             selection = "United States"
+             invalid = 0
+        elif entry == '2':
+            print('<Seattle>')
+            selection = 'Seattle'
+            invalid = 0
+        elif entry == '3':
+            print('<City>')
+            city = input("Enter a city name from the following options: {}\n".format(options))
+            selection = city
+            while selection not in options:
+                selection = input("Enter a valid city name:\n")
+            invalid = 0
+        else:
+            print("Invalid Selection. Try again.")
+    notInt = 1
+    while(notInt):
+        totalTrends = input("Enter the number of trends you would like to have. Pick a number between 0 and 20:\n")
+        try:
+            totalTrends = int(totalTrends)
+        except ValueError:
+            print("That's not an integer, try again")
+        else:
+            if totalTrends > 0 and totalTrends <= 20:
+                notInt = 0
+            else:
+                print("Enter a total between 0 and 20.")
+                
+    return totalTrends, selection
 
-def analyze_search_tweets(topic, final_tweets):
+def getOpinionTotals(tweets):
     analyser = SentimentIntensityAnalyzer()
-
     totals = {'Positive': 0, 'Negative': 0, 'Neutral': 0}
-    for tweet in final_tweets:
+    for tweet in tweets:
         sentiment = analyser.polarity_scores(tweet)
         #print("{:-<40} {}".format(tweet, str(sentiment)))
         if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
@@ -109,69 +102,18 @@ def analyze_search_tweets(topic, final_tweets):
             totals['Negative'] += 1
         elif (sentiment['neu'] == 1):
             totals['Neutral'] += 1
+    return totals
 
-    opinions = []
-    num = max(totals.values())
-
-    for sent in totals.keys():
-        if totals[sent] == num:
-            opinions.append(sent)
-
-    if len(opinions) == 1:
-        print("Opinion for the topic {}: {} with {} out of {} tweets.".format
-              (topic, opinions[0], num, MAXTWEETS))
-    else:
-        print("Opinions for the topic {}: split between ".format(trend), end="")
-        for i in range(len(opinions)):
-            print(opinions[i], end="")
-            if (i != len(opinions) - 1):
-                print(", ", end="")
-            else:
-                print(" ", end="")
-        print("with {} out of {} tweets".format(num, MAXTWEETS))
-
-def getOpinion(selection, oauth, api):
-   
-    analyser = SentimentIntensityAnalyzer()
-    for name in selection:
-        trends = getTopTrends(name, api)
-        for trend in trends:
-            client = Query(**oauth)
-            print("\nCurrent Trend: %s" % trend)
-            
-            tweets = get_final_tweet_sents(trend, client)
-            totals = {'Positive': 0, 'Negative': 0, 'Neutral': 0}
-            for tweet in tweets:
-                 sentiment = analyser.polarity_scores(tweet)
-                 #print("{:-<40} {}".format(tweet, str(sentiment)))
-                 if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
-                     totals['Positive'] += 1
-                     #print("This tweet was positive!\n")
-                 elif (sentiment['compound'] < 0 and sentiment['neg'] > 0):
-                     totals['Negative'] += 1
-                     #print("This tweet was negative!\n")
-                 elif (sentiment['neu'] == 1):
-                     totals['Neutral'] += 1
-                     #print("This tweet was neutral!\n")
-            opinions = []
-            num = max(totals.values())
-            
-            for sent in totals.keys():
-                if totals[sent] == num:
-                    opinions.append(sent)
-                    
-            if len(opinions) == 1:
-                print("Opinion for the topic {}: {} with {} out of {} tweets.".format
-                (trend, opinions[0], num, MAXTWEETS))
-            else:
-                print("Opinions for the topic {}: split between ".format(trend), end = "")
-                for i in range(len(opinions)):
-                    print(opinions[i], end = "")
-                    if (i != len(opinions)-1):
-                        print(", ", end = "")
-                    else:
-                        print(" ", end = "")
-                print("with {} out of {} tweets".format(num, MAXTWEETS))
+def getOpinionsOfTopic(topic, oauth):
+    client = Query(**oauth)
+    tweets = client.search_tweets(keywords=topic, limit=MAXTWEETS)
+    tweets = preprocess_tweet(tweets)
+    totals = getOpinionTotals(tweets)
+    posPercent = totals['Positive'] / MAXTWEETS
+    negPercent = totals['Negative'] / MAXTWEETS
+    neuPercent = totals['Neutral'] / MAXTWEETS
+    print("Opinions for the topic \"{}\":\nPositive: {:.0%}, Negative: {:.0%}, Neutral: {:.0%} out of {} tweets.\n"
+                  .format(topic, posPercent, negPercent, neuPercent, MAXTWEETS))
 
 def main():
     oauth = credsfromfile()
@@ -179,24 +121,22 @@ def main():
     entry = input("Enter 1 to search a topic: \n"
                   + "Enter 2 to analyze trends: \n")
     if entry == '1':
-        client = Query(**oauth)
         keyword = input("Enter a keyword or hashtag to search: ")
-        tweets = client.search_tweets(keywords=keyword, limit=100)
-        final_tweets = get_final_tweet_sents_search(tweets)
-        analyze_search_tweets(keyword, final_tweets)
+        getOpinionsOfTopic(keyword, oauth)
 
     elif entry == '2':
         auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
         auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
         api = tweepy.API(auth)
-
+        
         options = []
         for trend in api.trends_available():
             if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
                 options.append(trend['name'])
-        inp = get_user_input(options)
-        api = tweepy.API(auth)
-        getOpinion(inp, oauth, api)
+                
+        totalTrends, location = get_user_input(options)
+        trends = getTopTrends(totalTrends, location, api)
+        for trend in trends:
+            getOpinionsOfTopic(trend, oauth)
     
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
