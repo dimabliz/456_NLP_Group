@@ -2,6 +2,9 @@ from nltk.twitter import Query, credsfromfile
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import tweepy
 MAXTWEETS = 100
+FAVE_RATIO = 0.01
+RETWEET_RATIO = 0.001
+FOLLOWERS_RATIO = 0.0001
     
 def getTopTrends(totalTrends, name, api):
     ID = 0
@@ -29,6 +32,7 @@ def preprocess_tweet(raw_tweets):
     processed_tweet_sents = []
     retweet_counts = []
     fave_counts = []
+    followers_counts = []
 
     i = 0
     for tweet in raw_tweets:
@@ -38,9 +42,8 @@ def preprocess_tweet(raw_tweets):
         if tweet['lang'] == "en":
             tweet_text.append(tweet['text'])
             retweet_counts.append(tweet['retweet_count'])
-            #fave_counts.append(tweet['favourites_count'])
-            #print(tweet['favourites_count'])
             fave_counts.append(tweet['favorite_count'])
+            followers_counts.append(tweet['user']['followers_count'])
 
     # list of list of tweet words
     tweet_words = []
@@ -52,7 +55,7 @@ def preprocess_tweet(raw_tweets):
     for i in tweet_words:
         processed_tweet_sents.append(" ".join(i))
 
-    return processed_tweet_sents, retweet_counts, fave_counts
+    return processed_tweet_sents, retweet_counts, fave_counts, followers_counts
 
 #gets user input 
 def get_user_input(options):
@@ -94,7 +97,7 @@ def get_user_input(options):
                 
     return totalTrends, selection
 
-def getOpinionTotals(tweets, retweet_counts, fave_counts):
+def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
     analyser = SentimentIntensityAnalyzer()
     totals = {'Positive': 0, 'Negative': 0, 'Neutral': 0}
 
@@ -103,19 +106,19 @@ def getOpinionTotals(tweets, retweet_counts, fave_counts):
         sentiment = analyser.polarity_scores(tweet)
         #print("{:-<40} {}".format(tweet, str(sentiment)))
         if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
-            totals['Positive'] += (1 + 0.001 * retweet_counts[i] + 0.001 * fave_counts[i])
+            totals['Positive'] += (1 + RETWEET_RATIO * retweet_counts[i] + FAVE_RATIO * fave_counts[i] + followers_count[i] * FOLLOWERS_RATIO)
         elif (sentiment['compound'] < 0 and sentiment['neg'] > 0):
-            totals['Negative'] += (1 + 0.001 * retweet_counts[i] + 0.001 * fave_counts[i])
+            totals['Negative'] += (1 + RETWEET_RATIO * retweet_counts[i] + FAVE_RATIO * fave_counts[i] + followers_count[i] * FOLLOWERS_RATIO)
         elif (sentiment['neu'] == 1):
-            totals['Neutral'] += (1 + 0.001 * retweet_counts[i] + 0.001 * fave_counts[i])
+            totals['Neutral'] += (1 + RETWEET_RATIO * retweet_counts[i] + FAVE_RATIO * fave_counts[i] + followers_count[i] * FOLLOWERS_RATIO)
         i+=1
     return totals
 
 def getOpinionsOfTopic(topic, oauth):
     client = Query(**oauth)
     tweets = client.search_tweets(keywords=topic, limit=MAXTWEETS)
-    tweets, retweet_counts, fave_counts = preprocess_tweet(tweets)
-    totals = getOpinionTotals(tweets, retweet_counts, fave_counts)
+    tweets, retweet_counts, fave_counts, followers_count = preprocess_tweet(tweets)
+    totals = getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count)
 
     adjustedTotal = totals['Positive'] + totals['Negative'] + totals['Neutral']
     posPercent = totals['Positive'] / adjustedTotal
