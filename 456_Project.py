@@ -124,9 +124,12 @@ def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
     return sentiments, totals
 
 def getOpinionsOfTopic(topic, oauth, num_of_tweets):
+    raw_tweets = []
     client = Query(**oauth)
     tweets = client.search_tweets(keywords=topic, limit=num_of_tweets)
-    tweets, retweet_counts, fave_counts, followers_count = preprocess_tweet(tweets)
+    for tweet in tweets:
+        raw_tweets.append(tweet)
+    tweets, retweet_counts, fave_counts, followers_count = preprocess_tweet(raw_tweets)
     sentiments, totals = getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count)
 
     adjustedTotal = totals['Positive'] + totals['Negative'] + totals['Neutral']
@@ -146,25 +149,26 @@ def getOpinionsOfTopic(topic, oauth, num_of_tweets):
     else:
         print("The topic was mostly neutral. Unable to find the most neutral tweet.")
     
-    sent = sentiments[0]
+    sent = {'pos' : 0, 'neg' : 0,'neu' : 0, 'compound' : 0}
     sentTweet = ""
     for i in range(len(tweets)):
         if opinion == 'Positive'.lower():
             if (sentiments[i]['compound'] >= sent['compound'] and 
                 sentiments[i]['pos'] > sent['pos']):
-                sentTweet = tweets[i]
+                sentTweet = raw_tweets[i]
         elif opinion == 'Negative'.lower():
             if (sentiments[i]['compound'] <= sent['compound'] and 
                 sentiments[i]['neg'] > sent['neg']):
-                sentTweet = tweets[i]
+                sentTweet = raw_tweets[i]
                 
     if opinion != 'Neutral'.lower():
-        print("Most {} tweet: {}".format(opinion, sentTweet))
+        print("Most {} tweet: {}".format(opinion, sentTweet['text']))
+        print("URL: https://twitter.com/statuses/{}".format(sentTweet['id']))
     print("------------------------------------")
         
 def main():
     oauth = credsfromfile()
-
+    print('Welcome to our Twitter Sentiment Analyzer!')
     invalid = 1
     while(invalid):
         entry = input("Enter 1 to search a topic: \n"
@@ -174,7 +178,7 @@ def main():
 
             notInt = 1
             while (notInt):
-                num_of_tweets = input("Enter the number of tweets you want to analyze:")
+                num_of_tweets = input("Enter the number of tweets you want to analyze:\n")
                 try:
                     num_of_tweets = int(num_of_tweets)
                 except ValueError:
@@ -203,7 +207,7 @@ def main():
 
             notInt = 1
             while (notInt):
-                num_of_tweets = input("Enter the number of tweets you want to analyze:")
+                num_of_tweets = input("Enter the number of tweets you want to analyze:\n")
                 try:
                     num_of_tweets = int(num_of_tweets)
                 except ValueError:
