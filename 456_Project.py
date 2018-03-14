@@ -2,9 +2,9 @@ from nltk.twitter import Query, credsfromfile
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import tweepy
 MAXTWEETS = 100
-FAVE_RATIO = 0.01
-RETWEET_RATIO = 0.001
-FOLLOWERS_RATIO = 0.0001
+FAVE_RATIO = 0.001
+RETWEET_RATIO = 0.0001
+FOLLOWERS_RATIO = 0.00001
     
 def getTopTrends(totalTrends, name, api):
     ID = 0
@@ -106,11 +106,20 @@ def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
         sentiment = analyser.polarity_scores(tweet)
         #print("{:-<40} {}".format(tweet, str(sentiment)))
         if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
-            totals['Positive'] += (1 + RETWEET_RATIO * retweet_counts[i] + FAVE_RATIO * fave_counts[i] + followers_count[i] * FOLLOWERS_RATIO)
+            totals['Positive'] += (1 + 
+                  RETWEET_RATIO * retweet_counts[i] + 
+                  FAVE_RATIO * fave_counts[i] + 
+                  followers_count[i] * FOLLOWERS_RATIO)
         elif (sentiment['compound'] < 0 and sentiment['neg'] > 0):
-            totals['Negative'] += (1 + RETWEET_RATIO * retweet_counts[i] + FAVE_RATIO * fave_counts[i] + followers_count[i] * FOLLOWERS_RATIO)
+            totals['Negative'] += (1 + 
+                  RETWEET_RATIO * retweet_counts[i] + 
+                  FAVE_RATIO * fave_counts[i] + 
+                  followers_count[i] * FOLLOWERS_RATIO)
         elif (sentiment['neu'] == 1):
-            totals['Neutral'] += (1 + RETWEET_RATIO * retweet_counts[i] + FAVE_RATIO * fave_counts[i] + followers_count[i] * FOLLOWERS_RATIO)
+            totals['Neutral'] += (1 + 
+                  RETWEET_RATIO * retweet_counts[i] + 
+                  FAVE_RATIO * fave_counts[i] +
+                  followers_count[i] * FOLLOWERS_RATIO)
         i+=1
     return totals
 
@@ -130,28 +139,25 @@ def getOpinionsOfTopic(topic, oauth):
 def main():
     oauth = credsfromfile()
 
-    while True:
-        entry = input("Enter 1 to search a topic: \n"
-                      + "Enter 2 to analyze trends: \n")
-        if entry == '1':
-            keyword = input("Enter a keyword or hashtag to search: ")
-            getOpinionsOfTopic(keyword, oauth)
+    entry = input("Enter 1 to search a topic: \n"
+                  + "Enter 2 to analyze trends: \n")
+    if entry == '1':
+        keyword = input("Enter a keyword or hashtag to search: ")
+        getOpinionsOfTopic(keyword, oauth)
 
-        elif entry == '2':
-            auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
-            auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
-            api = tweepy.API(auth)
+    elif entry == '2':
+        auth = tweepy.OAuthHandler(oauth.get('app_key'), oauth.get('app_secret'))
+        auth.set_access_token(oauth.get('oauth_token'), oauth.get('oauth_token_secret'))
+        api = tweepy.API(auth)
 
-            options = []
-            for trend in api.trends_available():
-                if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
-                    options.append(trend['name'])
+        options = []
+        for trend in api.trends_available():
+            if (trend['countryCode'] == 'US' and trend['name'] != 'United States'):
+                options.append(trend['name'])
 
-            totalTrends, location = get_user_input(options)
-            trends = getTopTrends(totalTrends, location, api)
-            for trend in trends:
-                getOpinionsOfTopic(trend, oauth)
-        else:
-            break
+        totalTrends, location = get_user_input(options)
+        trends = getTopTrends(totalTrends, location, api)
+        for trend in trends:
+            getOpinionsOfTopic(trend, oauth)
     
 if __name__ == "__main__": main()
