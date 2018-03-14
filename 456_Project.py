@@ -123,9 +123,9 @@ def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
                   followers_count[i] * FOLLOWERS_RATIO)
     return sentiments, totals
 
-def getOpinionsOfTopic(topic, oauth):
+def getOpinionsOfTopic(topic, oauth, num_of_tweets):
     client = Query(**oauth)
-    tweets = client.search_tweets(keywords=topic, limit=MAXTWEETS)
+    tweets = client.search_tweets(keywords=topic, limit=num_of_tweets)
     tweets, retweet_counts, fave_counts, followers_count = preprocess_tweet(tweets)
     sentiments, totals = getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count)
 
@@ -134,7 +134,7 @@ def getOpinionsOfTopic(topic, oauth):
     negPercent = totals['Negative'] / adjustedTotal
     neuPercent = totals['Neutral'] / adjustedTotal
     print("Opinions for the topic \"{}\":\nPositive: {:.0%}, Negative: {:.0%}, Neutral: {:.0%} out of {} tweets.\n"
-                  .format(topic, posPercent, negPercent, neuPercent, MAXTWEETS))
+                  .format(topic, posPercent, negPercent, neuPercent, num_of_tweets))
     
     greatestTotal = float(max(totals.values()))
     opinion = ""
@@ -171,7 +171,21 @@ def main():
                       + "Enter 2 to analyze trends: \n")
         if entry == '1':
             keyword = input("Enter a keyword or hashtag to search: ")
-            getOpinionsOfTopic(keyword, oauth)
+
+            notInt = 1
+            while (notInt):
+                num_of_tweets = input("Enter the number of tweets you want to analyze:")
+                try:
+                    num_of_tweets = int(num_of_tweets)
+                except ValueError:
+                    print("That's not an integer, try again")
+                else:
+                    if num_of_tweets > 0 and num_of_tweets <= 500:
+                        notInt = 0
+                    else:
+                        print("Enter a total between 0 and 500.")
+
+            getOpinionsOfTopic(keyword, oauth, num_of_tweets)
             invalid = 0
     
         elif entry == '2':
@@ -186,8 +200,22 @@ def main():
     
             totalTrends, location = get_user_input(options)
             trends = getTopTrends(totalTrends, location, api)
+
+            notInt = 1
+            while (notInt):
+                num_of_tweets = input("Enter the number of tweets you want to analyze:")
+                try:
+                    num_of_tweets = int(num_of_tweets)
+                except ValueError:
+                    print("That's not an integer, try again")
+                else:
+                    if num_of_tweets > 0 and num_of_tweets <= 500:
+                        notInt = 0
+                    else:
+                        print("Enter a total between 0 and 500.")
+
             for trend in trends:
-                getOpinionsOfTopic(trend, oauth)
+                getOpinionsOfTopic(trend, oauth, num_of_tweets)
             invalid = 0
         else: 
             print("Invalid Selection. Try again.")
