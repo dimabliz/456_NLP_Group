@@ -1,12 +1,9 @@
 from nltk.twitter import Query, credsfromfile
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import tweepy
-
-MAXTWEETS = 100
 FAVE_RATIO = 0.001
 RETWEET_RATIO = 0.0001
 FOLLOWERS_RATIO = 0.00001
-TWEETS_PRINTED = 5
     
 def getTopTrends(totalTrends, name, api):
     ID = 0
@@ -86,16 +83,16 @@ def get_user_input(options):
             print("Invalid selection. Try again.")
     notInt = 1
     while(notInt):
-        totalTrends = input("Enter the number of trends you would like to have. Pick a number between 0 and 20:\n")
+        totalTrends = input("Enter the number of trends you would like to have. Pick a number between 0 and 30:\n")
         try:
             totalTrends = int(totalTrends)
         except ValueError:
             print("That's not an integer, try again")
         else:
-            if totalTrends > 0 and totalTrends <= 20:
+            if totalTrends > 0 and totalTrends <= 30:
                 notInt = 0
             else:
-                print("Enter a total between 0 and 20.")
+                print("Enter a total between 0 and 30.")
                 
     return totalTrends, selection
 
@@ -106,21 +103,25 @@ def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
     for i in range(len(tweets)):
         sentiment = analyser.polarity_scores(tweets[i])
         sentiments.append(sentiment)
+        
         if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
-            totals['Positive'] += (1 + 
+                  totals['Positive'] += (1 + 
                   RETWEET_RATIO * retweet_counts[i] + 
                   FAVE_RATIO * fave_counts[i] + 
-                  followers_count[i] * FOLLOWERS_RATIO)
+                  FOLLOWERS_RATIO * followers_count[i])
+                  
         elif (sentiment['compound'] < 0 and sentiment['neg'] > 0):
-            totals['Negative'] += (1 + 
+                  totals['Negative'] += (1 + 
                   RETWEET_RATIO * retweet_counts[i] + 
                   FAVE_RATIO * fave_counts[i] + 
-                  followers_count[i] * FOLLOWERS_RATIO)
+                  FOLLOWERS_RATIO * followers_count[i])
+                  
         elif (sentiment['neu'] == 1):
-            totals['Neutral'] += (1 + 
+                  totals['Neutral'] += (1 + 
                   RETWEET_RATIO * retweet_counts[i] + 
                   FAVE_RATIO * fave_counts[i] +
-                  followers_count[i] * FOLLOWERS_RATIO)
+                  FOLLOWERS_RATIO * followers_count[i])
+                  
     return sentiments, totals
 
 def getOpinionsOfTopic(topic, oauth, num_of_tweets):
@@ -153,12 +154,12 @@ def getOpinionsOfTopic(topic, oauth, num_of_tweets):
     sentTweet = ""
     for i in range(len(tweets)):
         if opinion == 'Positive'.lower():
-            if (sentiments[i]['compound'] >= sent['compound'] and 
-                sentiments[i]['pos'] > sent['pos']):
+            if (sentiments[i]['compound'] >= sent['compound'] and sentiments[i]['pos'] > sent['pos']):
+                sent = sentiments[i]
                 sentTweet = raw_tweets[i]
         elif opinion == 'Negative'.lower():
-            if (sentiments[i]['compound'] <= sent['compound'] and 
-                sentiments[i]['neg'] > sent['neg']):
+            if (sentiments[i]['compound'] <= sent['compound'] and sentiments[i]['neg'] > sent['neg']):
+                sent = sentiments[i]
                 sentTweet = raw_tweets[i]
                 
     if opinion != 'Neutral'.lower():
@@ -169,13 +170,15 @@ def getOpinionsOfTopic(topic, oauth, num_of_tweets):
 def main():
     oauth = credsfromfile()
     print('Welcome to our Twitter Sentiment Analyzer!')
+    keyword = ""
     invalid = 1
     while(invalid):
         entry = input("Enter 1 to search a topic: \n"
                       + "Enter 2 to analyze trends: \n")
         if entry == '1':
-            keyword = input("Enter a keyword or hashtag to search: ")
-
+            while keyword == "":
+                keyword = input("Enter a keyword or hashtag to search: ")
+            
             notInt = 1
             while (notInt):
                 num_of_tweets = input("Enter the number of tweets you want to analyze:\n")
