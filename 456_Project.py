@@ -1,10 +1,12 @@
 from nltk.twitter import Query, credsfromfile
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import tweepy
+
 MAXTWEETS = 100
 FAVE_RATIO = 0.001
 RETWEET_RATIO = 0.0001
 FOLLOWERS_RATIO = 0.00001
+TWEETS_PRINTED = 5
     
 def getTopTrends(totalTrends, name, api):
     ID = 0
@@ -100,11 +102,10 @@ def get_user_input(options):
 def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
     analyser = SentimentIntensityAnalyzer()
     totals = {'Positive': 0, 'Negative': 0, 'Neutral': 0}
-
-    i = 0
-    for tweet in tweets:
-        sentiment = analyser.polarity_scores(tweet)
-        #print("{:-<40} {}".format(tweet, str(sentiment)))
+    sentiments = []
+    for i in range(len(tweets)):
+        sentiment = analyser.polarity_scores(tweets[i])
+        sentiments.append(sentiment)
         if (sentiment['compound'] > 0 and sentiment['pos'] > 0):
             totals['Positive'] += (1 + 
                   RETWEET_RATIO * retweet_counts[i] + 
@@ -120,14 +121,13 @@ def getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count):
                   RETWEET_RATIO * retweet_counts[i] + 
                   FAVE_RATIO * fave_counts[i] +
                   followers_count[i] * FOLLOWERS_RATIO)
-        i+=1
-    return totals
+    return sentiments, totals
 
 def getOpinionsOfTopic(topic, oauth):
     client = Query(**oauth)
     tweets = client.search_tweets(keywords=topic, limit=MAXTWEETS)
     tweets, retweet_counts, fave_counts, followers_count = preprocess_tweet(tweets)
-    totals = getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count)
+    sentiments, totals = getOpinionTotals(tweets, retweet_counts, fave_counts, followers_count)
 
     adjustedTotal = totals['Positive'] + totals['Negative'] + totals['Neutral']
     posPercent = totals['Positive'] / adjustedTotal
@@ -135,7 +135,33 @@ def getOpinionsOfTopic(topic, oauth):
     neuPercent = totals['Neutral'] / adjustedTotal
     print("Opinions for the topic \"{}\":\nPositive: {:.0%}, Negative: {:.0%}, Neutral: {:.0%} out of {} tweets.\n"
                   .format(topic, posPercent, negPercent, neuPercent, MAXTWEETS))
-
+    
+    greatestTotal = float(max(totals.values()))
+    opinion = ""
+    for key in totals.keys():
+        if totals[key] == greatestTotal:
+            opinion = key.lower()
+    if opinion != 'Neutral'.lower():
+        print("The topic was mostly {}. Finding the most {} tweet.".format(opinion, opinion))
+    else:
+        print("The topic was mostly neutral. Unable to find the most neutral tweet.")
+    
+    sent = sentiments[0]
+    sentTweet = ""
+    for i in range(len(tweets)):
+        if opinion == 'Positive'.lower():
+            if (sentiments[i]['compound'] >= sent['compound'] and 
+                sentiments[i]['pos'] > sent['pos']):
+                sentTweet = tweets[i]
+        elif opinion == 'Negative'.lower():
+            if (sentiments[i]['compound'] <= sent['compound'] and 
+                sentiments[i]['neg'] > sent['neg']):
+                sentTweet = tweets[i]
+                
+    if opinion != 'Neutral'.lower():
+        print("Most {} tweet: {}".format(opinion, sentTweet))
+    print("------------------------------------")
+        
 def main():
     oauth = credsfromfile()
 
