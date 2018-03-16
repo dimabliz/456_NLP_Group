@@ -28,5 +28,5 @@ with the sentiment scores and a sample of the top positive/negative tweet
 for each subject
 
 choosing 3: will allow you to choose a city and get the top Number of trending topics
-in the City of Seattle with the sentiment scores and a sample of the top
+in the City with the sentiment scores and a sample of the top
 positive/negative tweet for each subject
